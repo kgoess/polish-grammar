@@ -4,35 +4,34 @@
 <head>
 <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
+<!--
+Copyright (c) 2011 Kevin M. Goess
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+
 <title>polish adjective agreement: subject-verb-object</title>
 
-<script type="text/javascript" src="http://yui.yahooapis.com/3.3.0/build/yui/yui-min.js"></script>
+<!-- <script type="text/javascript" src="https://yui.yahooapis.com/3.3.0/build/yui/yui-min.js"></script> -->
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/yui/3.3.0/yui/yui-min.js"></script>
 
 <script type="text/javascript">
 
-/* TODO:
-   Będziemy lubili taniich ojców. fix that taniich to tanich
-   Support pronouns as direct objects
-   Allow multiple subjects
-   If they pin the subject we need to disable the "include * subjects" checkboxes
-   otherwise they might change it and generate an adjective for a pronoun.
-*/
 
 YUI().use('node', 'event-key', 'anim', 'substitute', function(Y) {
 
-var adjectiveEndings = {
-             //    m-p_+_a  m-inam    f      n
- // "nominative-s": [    ~y or i~     'a'    'e'
-    "genitive-s":   [ 'ego',  'ego',  'ej', 'ego' ],
-    "dative-s":     [ 'emu',  'emu',  'ej', 'emu' ],
-    "accusative-s": [ 'ego',  '=nom', 'ą',  'e'   ],
-            //      m-pers    m       f    n 
-    "nominative-p": [ 'IRR',   '=nas', '=nas', '=nas'],
-    "genitive-p":   [ '*ch',   '*ch',  '*ch',  '*ch'] ,
-    "dative-p":     [ '*m',    '*m',   '*m',   '*m' ],
-    "accusative-p": [ '=gen',  '=nom', '=nom', '=nom'  ]
-};
-    
+
 var pronounData = [
  [ 1, 's', '',           'I', ''],
  [ 2, 's', '',           'you', ''],
@@ -46,64 +45,119 @@ var pronounData = [
  //[ 3, 'p',               'you all (formal, masc.)'],
  //[ 3, 'p',               'you all (formal, mixed.)'], ????
 ];
+
+// "exports" is needed for our unit tests in mocha
+// this fakes it up in case we're *not* in mocha
+var exports;
+if (typeof exports === "undefined"){
+    exports = {};
+} 
+pronounData.findRow = function(english){
+    var i;
+    for (i = 0; i < this.length; ++i){
+        if (this[i][3] === english){
+            return this[i];
+        }
+    }
+    throw("Error: no pronoun match for '" + english + "'");
+};
+exports.pronounData = pronounData;
   
 
 //http://en.wikibooks.org/wiki/Polish/Masculine_noun_declension
 //http://en.wiktionary.org/wiki/chłopiec
+//  eng sing     eng pl          nom_sing    nom_pl       gen_sing    gen_pl       acc_sing    acc_pl     
 var nounData = [
- [ 'house',      'houses',       'dom',      'domy',      'dom',      'domy',      'm',          'no-agent' ], 
- [ 'cat',        'cats',         'kot',      'koty',      'kota',     'koty',      'm-animate',  'agent' ], 
- [ 'table',      'tables',       'stół',     'stóły',     'stoł',     'stoły',     'm',          'no-agent'  ], 
- [ 'store',      'stores',       'sklep',    'sklepy',    'sklep',    'sklepy',    'm',          'no-agent' ], 
- [ 'church',     'churches',     'koscioł',  'koscioły',  'koscioł',  'koscioły',  'm',          'no-agent' ], 
- [ 'car',        'cars',         'samochód', 'samochody', 'samochód', 'samochody', 'm',          'no-agent' ], 
- [ 'bicycle',    'bicycles',     'rower',    'rowery',    'rower',    'rowery',    'm',          'no-agent' ],
- [ 'train',      'trains',       'pociąg',   'pociągi',   'pociąg',   'pociągi',   'm',          'no-agent' ],
- [ 'airplane',   'airplanes',    'samolot',  'samoloty',  'samolot',  'samoloty',  'm',          'no-agent' ], 
- [ 'clock',      'clocks',       'zegar',    'zegary',    'zegar',    'zegary',    'm',          'no-agent' ],
- [ 'watch',      'watches',      'zegarek',  'zegarki',   'zegarek',  'zegarki',   'm',          'no-agent' ],
- [ 'room',       'rooms',        'pokoj',    'pokoje',    'pokoj',    'pokoje',    'm',          'no-agent' ],
- [ 'boy',        'boys',         'chłopiec', 'chłopcy',   'chłopca',  'chłopców',  'm-personal', 'i-agent' ], 
- [ 'pen',        'pens',         'długopis', 'długopisy', 'długopis', 'długopisy', 'm',          'no-agent' ], 
- [ 'shoe',       'shoes',        'but',      'buty',      'but',      'buty',      'm',          'no-agent' ], 
- [ 'sandwich',   'sandwiches',   'kanapka',  'kanapki',   'kanapkę',  'kanapki',   'f',          'no-agent' ],
- [ 'toy',        'toys',         'zabawka',  'zabawki',   'zabawkę',  'zabawki',   'f',          'no-agent' ],
- [ 'bank',       'banks',        'bank',     'banki',     'bank',     'banki',     'm',          'no-agent' ], 
- [ 'ball',       'balls',        'piłka',    'piłki',     'pilkę',    'pilki',     'f',          'no-agent' ],
- [ 'key',        'keys',         'klucz',    'klucze',    'klucz',    'klucze',    'm',          'no-agent' ], 
- [ 'plate',      'plates',       'talerz',   'talerze',   'talerz',   'talerze',   'm',          'no-agent' ], 
- [ 'hat',        'hats',         'kapelusz', 'kapelusze', 'kapelusz', 'kapelusze', 'm',          'no-agent' ], 
- [ 'horse',      'horses',       'koń',      'konie',     'konia',    'konie',     'm-animate',  'agent' ], 
- [ 'woman',      'women',        'kobieta',  'kobiety',   'kobietę',  'kobiety',   'f',          'i-agent' ], 
- [ 'school',     'schools',      'skoła',    'skoły',     'skolę',    'skoły',     'f',          'no-agent' ], 
- [ 'sister',     'sisters',      'siostra',  'siostry',   'siostrę',  'siostry',   'f',          'i-agent' ], 
- [ 'wife',       'wives',        'żona',     'żony',      'żonę',     'żony',      'f',          'i-agent' ], 
- [ 'cloud',      'clouds',       'chmura',   'chmury',    'chmurę',   'chmury',    'f',          'no-agent' ], 
- [ 'fish',       'fishes',       'ryba',     'ryby',      'rybę',     'ryby',      'f',          'agent' ], 
- [ 'bench',      'benches',      'ławka',    'ławki',     'ławkę',    'ławki',     'f',          'no-agent' ], 
- [ 'book',       'books',        'książka',  'książki',   'książkę',  'książki',   'f',          'no-agent' ], 
- [ 'daughter',   'daughters',    'córka',    'córki',     'córkę',    'córki',     'f',          'i-agent' ], 
- [ 't-shirt',    't-shirs',      'koszulka', 'koszulki',  'koszulkę', 'koszukli',  'f',          'no-agent' ], 
- [ 'skirt',      'skirts',       'spódnica', 'spódnice',  'spódnicę', 'spodnice',  'f',          'no-agent' ], 
- [ 'street',     'streets',      'ulica',    'ulice',     'ulica',    'ulice',     'f',          'no-agent' ], 
- [ 'road',       'roads',        'droga',    'drogi',     'drogę',    'drogi',     'f',          'no-agent' ], 
- [ 'apple',      'apples',       'jabłko',   'jabłka',    'jabłko',   'jabłka',    'n',          'no-agent' ], 
- [ 'chair',      'chairs',       'krzesło',  'krzesła',   'krzesło',  'krzesła',   'n',          'no-agent' ], 
- [ 'soap',       'soaps',        'mydło',    'mydła',     'mydło',    'mydła',     'n',          'no-agent' ], 
- [ 'bed',        'beds',         'łóżko',    'łóżka',     'łóżko',    'łóżka',     'n',          'no-agent' ], 
- [ 'animal',     'animals',      'zwierzę',  'zwierzęta', 'zwierzę',  'zwierzęta', 'n',          'agent' ],
- [ 'father',     'fathers',      'ojciec',   'ojcowie',   'ojca',     'ojców',     'm-personal', 'i-agent' ],
- [ 'husband',    'husbands',     'mąż',      'mężowie',   'męża',     'mężów',     'm-personal', 'i-agent' ],
- [ 'grandpa',    'grandpas',     'dziadek',  'dziadkowie','dziadka',  'dziadków',  'm-personal', 'i-agent' ],
- [ 'newspaper',  'newspapers',   'gazeta',   'gazety',    'gazetę',   'gazety',    'f',          'no-agent' ],
- [ 'letter',     'letters',      'list',     'listy',     'list',     'listy',     'm',          'no-agent' ],    
- [ 'dictionary', 'dictionaries', 'słownik',  'słowniki',  'słownik',  'słowniki',  'm',          'no-agent' ], 
- [ 'sign',       'signs',        'znak',     'znaki',     'znak',     'znaki',     'm',          'no-agent' ],
- [ 'egg',        'eggs',         'jajko',    'jajka',     'jajko',    'jajka',     'n',          'no-agent' ],
- [ 'carrot',     'carrots',      'marchew',  'marchwie',  'marchew',  'marchwie',  'f',          'no-agent' ],
- [ 'sausage',    'sausages',     'kiełbasa', 'kiełbasy',  'kiełbasę', 'kiełbasy',  'f',          'no-agent' ],
- [ 'cabbage',    'cabbages',     'kapusta',  'kapusty',   'kapustę',  'kapusty',   'f',          'no-agent' ]
-] ;
+ [ 'house',      'houses',       'dom',      'domy',      'domu',     'domów',     'dom',      'domy',      'm',          'no-agent' ], 
+ [ 'cat',        'cats',         'kot',      'koty',      'kota',     'kotów',     'kota',     'koty',      'm-animate',  'agent' ], 
+ [ 'table',      'tables',       'stół',     'stoły',     'stołu',    'stołów',    'stół',     'stoły',     'm',          'no-agent'  ], 
+ [ 'store',      'stores',       'sklep',    'sklepy',    'sklepu',   'sklepów',   'sklep',    'sklepy',    'm',          'no-agent' ], 
+ [ 'church',     'churches',     'kościół',  'kościoły',  'kościoła', 'kościołów', 'kościół',  'kościoły',  'm',          'no-agent' ], 
+ [ 'car',        'cars',         'samochód', 'samochody', 'samochodu','samochodów','samochód', 'samochody', 'm',          'no-agent' ], 
+ [ 'bicycle',    'bicycles',     'rower',    'rowery',    'roweru',   'rowerów',   'rower',    'rowery',    'm',          'no-agent' ],
+ [ 'train',      'trains',       'pociąg',   'pociągi',   'pociągu',  'pociągów',  'pociąg',   'pociągi',   'm',          'no-agent' ],
+ [ 'airplane',   'airplanes',    'samolot',  'samoloty',  'samolotu', 'samolotów', 'samolot',  'samoloty',  'm',          'no-agent' ], 
+ [ 'clock',      'clocks',       'zegar',    'zegary',    'zegara',   'zegarów',   'zegar',    'zegary',    'm',          'no-agent' ],
+ [ 'watch',      'watches',      'zegarek',  'zegarki',   'zegarka',  'zegarków',  'zegarek',  'zegarki',   'm',          'no-agent' ],
+ [ 'room',       'rooms',        'pokój',    'pokoje',    'pokoju',   'pokojów',   'pokój',    'pokoje',    'm',          'no-agent' ],
+ [ 'boy',        'boys',         'chłopiec', 'chłopcy',   'chłopca',  'chłopców',  'chłopca',  'chłopców',  'm-personal', 'i-agent' ], 
+ [ 'pen',        'pens',         'długopis', 'długopisy', 'długopisu','długopisów','długopis', 'długopisy', 'm',          'no-agent' ], 
+ [ 'shoe',       'shoes',        'but',      'buty',      'buta',     'butów',     'but',      'buty',      'm',          'no-agent' ], 
+ [ 'sandwich',   'sandwiches',   'kanapka',  'kanapki',   'kanapki',  'kanapek',   'kanapkę',  'kanapki',   'f',          'no-agent' ],
+ [ 'toy',        'toys',         'zabawka',  'zabawki',   'zabawki',  'zabawek',   'zabawkę',  'zabawki',   'f',          'no-agent' ],
+ [ 'bank',       'banks',        'bank',     'banki',     'banku',    'banków',    'bank',     'banki',     'm',          'no-agent' ], 
+ [ 'ball',       'balls',        'piłka',    'piłki',     'piłki',    'piłek',     'piłkę',    'piłki',     'f',          'no-agent' ],
+ [ 'key',        'keys',         'klucz',    'klucze',    'klucza',   'kluczy',    'klucz',    'klucze',    'm',          'no-agent' ], 
+ [ 'plate',      'plates',       'talerz',   'talerze',   'talerza',  'talerzy',   'talerz',   'talerze',   'm',          'no-agent' ], 
+ [ 'hat',        'hats',         'kapelusz', 'kapelusze', 'kapelusza','kapeluszy', 'kapelusz', 'kapelusze', 'm',          'no-agent' ], 
+ [ 'horse',      'horses',       'koń',      'konie',     'konia',    'koni',      'konia',    'konie',     'm-animate',  'agent' ], 
+ [ 'deer',       'deer (pl.)',         'jeleń',    'jelenie',   'jeleni',   'jeleni',    'jelenia',  'jelenie',   'm-animate',   'agent'    ],
+ [ 'woman',      'women',        'kobieta',  'kobiety',   'kobiety',  'kobiet',    'kobietę',  'kobiety',   'f',          'i-agent' ], 
+ [ 'school',     'schools',      'szkoła',   'szkoły',    'szkoły',   'szkół',     'szkołę',   'szkoły',    'f',          'no-agent' ], 
+ [ 'sister',     'sisters',      'siostra',  'siostry',   'siostry',  'siostr',    'siostrę',  'siostry',   'f',          'i-agent' ], 
+ [ 'wife',       'wives',        'żona',     'żony',      'żony',     'żon',       'żonę',     'żony',      'f',          'i-agent' ], 
+ [ 'cloud',      'clouds',       'chmura',   'chmury',    'chmury',   'chmur',     'chmurę',   'chmury',    'f',          'no-agent' ], 
+ [ 'fish',       'fishes',       'ryba',     'ryby',      'ryby',     'ryb',       'rybę',     'ryby',      'f',          'agent' ], 
+ [ 'bench',      'benches',      'ławka',    'ławki',     'ławki',    'ławek',     'ławkę',    'ławki',     'f',          'no-agent' ], 
+ [ 'book',       'books',        'książka',  'książki',   'książki',  'książek',   'książkę',  'książki',   'f',          'no-agent' ], 
+ [ 'daughter',   'daughters',    'córka',    'córki',     'córki',    'córek',     'córkę',    'córki',     'f',          'i-agent' ], 
+ [ 't-shirt',    't-shirts',     'koszulka', 'koszulki',  'koszulki', 'koszulek',  'koszulkę', 'koszulki',  'f',          'no-agent' ], 
+ [ 'skirt',      'skirts',       'spódnica', 'spódnice',  'spódnicy', 'spódnic',   'spódnicę', 'spódnice',  'f',          'no-agent' ], 
+ [ 'street',     'streets',      'ulica',    'ulice',     'ulicy',    'ulic',      'ulicę',    'ulice',     'f',          'no-agent' ], 
+ [ 'road',       'roads',        'droga',    'drogi',     'drogi',    'dróg',      'drogę',    'drogi',     'f',          'no-agent' ], 
+ [ 'apple',      'apples',       'jabłko',   'jabłka',    'jabłka',   'jabłek',    'jabłko',   'jabłka',    'n',          'no-agent' ], 
+ [ 'chair',      'chairs',       'krzesło',  'krzesła',   'krzesła',  'krzeseł',   'krzesło',  'krzesła',   'n',          'no-agent' ], 
+ [ 'soap',       'soaps',        'mydło',    'mydła',     'mydła',    'mydeł',     'mydło',    'mydła',     'n',          'no-agent' ], 
+ [ 'bed',        'beds',         'łóżko',    'łóżka',     'łóżka',    'łóżek',     'łóżko',    'łóżka',     'n',          'no-agent' ], 
+ [ 'animal',     'animals',      'zwierzę',  'zwierzęta', 'zwierzęcia','zwierząt', 'zwierzę',  'zwierzęta', 'n',          'agent' ],
+ [ 'father',     'fathers',      'ojciec',   'ojcowie',   'ojca',     'ojców',     'ojca',     'ojców',     'm-personal', 'i-agent' ],
+ [ 'husband',    'husbands',     'mąż',      'mężowie',   'męża',     'mężów',     'męża',     'mężów',     'm-personal', 'i-agent' ],
+ [ 'grandpa',    'grandpas',     'dziadek',  'dziadkowie','dziadka',  'dziadków',  'dziadka',  'dziadków',  'm-personal', 'i-agent' ],
+ [ 'newspaper',  'newspapers',   'gazeta',   'gazety',    'gazety',   'gazet',     'gazetę',   'gazety',    'f',          'no-agent' ],
+ [ 'letter',     'letters',      'list',     'listy',     'listu',    'listów',    'list',     'listy',     'm',          'no-agent' ],    
+ [ 'dictionary', 'dictionaries', 'słownik',  'słowniki',  'słownika', 'słowników', 'słownik',  'słowniki',  'm',          'no-agent' ], 
+ [ 'sign',       'signs',        'znak',     'znaki',     'znaku',    'znaków',    'znak',     'znaki',     'm',          'no-agent' ],
+ [ 'egg',        'eggs',         'jajko',    'jajka',     'jajka',    'jajek',     'jajko',    'jajka',     'n',          'no-agent' ],
+ [ 'carrot',     'carrots',      'marchew',  'marchwie',  'marchwi',  'marchwi',   'marchew',  'marchwie',  'f',          'no-agent' ],
+ [ 'sausage',    'sausages',     'kiełbasa', 'kiełbasy',  'kiełbasy', 'kiełbas',   'kiełbasę', 'kiełbasy',  'f',          'no-agent' ],
+ [ 'bridge',     'bridges',      'most',     'mosty',     'mostu',    'mostów',    'most',     'mosty',     'm',          'no-agent' ],
+ [ 'friend',     'friends',      'przyjaciel','przyjaciele','przyjaciela','przyjaciół','przyjaciela','przyjaciół','m-personal', 'i-agent' ],
+ [ 'cabbage',    'cabbages',     'kapusta',  'kapusty',   'kapusty',  'kapust',    'kapustę',  'kapusty',   'f',          'no-agent' ],
+ [ 'bear',       'bears',        'niedźwiedź','niedźwiedzie', 'niedźwiedzia', 'niedżwiedzi', 'niedźwidzia', 'niedźwiedzie', 'm-animate', 'agent' ],
+// mysz is one of those irregular feminine sz words, like twarz
+// [ 'mouse',      'mice',         'mysz',     'myszy',     'myszy',    'myszy',     'mysz',     'myszy',     'f',          'agent',  ],
+// ptak is irregular in acc. sing: ptaka?
+ [ 'bird',       'birds',        'ptak',     'ptaki',     'ptaka',    'ptaków',    'ptaka',    'ptaki',     'm-animate',  'agent'    ],
+// ...and so is żółw
+ [ 'turtle',     'turtles',      'żółw',     'żółwie',    'żółwia',   'żółwi',     'żółwia',   'żółwie',    'm-animate',  'agent'    ],
+// wąż has two possibilities for gen pl: węży/wężów.
+ [ 'snake',      'snakes',       'wąż',      'węże',      'węża',     'wężów',     'węża',    'węże',      'm-animate',   'agent'    ],
+ [ 'frog',       'frogs',        'żaba',     'żaby',      'żaby',     'żab',       'żabę',    'żaby',      'f',           'agent'    ],
+ [ 'cow',        'cows',         'krowa',    'krowy',     'krowy',    'krów',      'krowę',   'krowy',     'f',           'agent'    ]
+];
+
+
+
+// "exports" is needed for our unit tests in mocha
+// this fakes it up in case we're *not* in mocha
+var exports;
+if (typeof exports === "undefined"){
+    exports = {};
+} 
+nounData.findRow = function(english){
+    var i;
+    for (i = 0; i < this.length; ++i){
+        if (this[i][0] === english){
+            return this[i];
+        }
+    }
+    throw("Error: " + english + " not found in noun_data");
+};
+exports.nounData = nounData;
+
+
+
+
 
 
 var adjectiveData = [
@@ -125,7 +179,7 @@ var adjectiveData = [
  [ 'white',  'biały',      'biała',      'białe',      'biali'      ], 
  [ 'black',  'czarny',     'czarna',     'czarne',     'czarni'     ], 
  [ 'red',    'czerwony',   'czerwona',   'czerwone',   'czerwoni'   ], 
- [ 'yellow', 'zółty',      'zółta',      'zółte',      'żółci'      ], 
+ [ 'yellow', 'żółty',      'żółta',      'żółte',      'żółci'      ], 
  [ 'blue',   'niebieski',  'niebieska',  'niebieskie', 'niebiescy'  ], 
  [ 'green',  'zielony',    'zielona',    'zielone',    'zieleni'    ],
  [ 'gray',   'szary',      'szara',      'szare',      'szarzy'     ],
@@ -147,12 +201,27 @@ var adjectiveData = [
  //[ 'heavy', 'ci
  //light lekka ...
  //powolne
+ //mili nice
 ];
-
-var byćPast = {
-    s: [ 'będę',     'będziesz',  'będzie' ],
-    p: [ 'będziemy', 'będziecie', 'będą' ]
+// "exports" is needed for our unit tests in mocha
+// this fakes it up in case we're *not* in mocha
+var exports;
+if (typeof exports === "undefined"){
+    exports = {};
+} 
+adjectiveData.findRow = function(english){
+    var i;
+    for (i = 0; i < this.length; ++i){
+        if (this[i][0] === english){
+            return this[i];
+        }
+    }
+    return false;
 };
+exports.adjectiveData = adjectiveData;
+
+
+
 
 var verbData = [
     { infinitive: [ 'czytać', "to read" ],
@@ -272,6 +341,7 @@ var verbData = [
       english_past: 'was needing', 
       english_future: 'will be needing',
       transitive: true,
+      object_case: 'genitive',
       ok_subjects: 'i-agent',
       objects: 'any',
       present_tense: {
@@ -279,17 +349,120 @@ var verbData = [
         p: [ 'potrzebujemy', 'potrzebujecie', 'potrzebują' ]
       },
       past_tense: {
-        s:  [ 'potrzebowałem/potrzebowałam','potrzebowałeś/potrzebowałaś','potrzebował/potrzebowała' ],
+        s: [ 'potrzebowałem/potrzebowałam','potrzebowałeś/potrzebowałaś','potrzebował/potrzebowała' ],
         p: [ 'potrzebowaliśmy/potrzebowałyśmy', 'potrzebowaliście/potrzebowałyście', 'potrzebowali/potrzebowały' ]
       },
       future_tense: {
         s: [ 'potrzebował', 'potrzebowała'  ],
         p: [ 'potrzebowali', 'potrzebowały' ] 
       }
+    },
+    { infinitive: ['wracać', 'to return' ],
+      english_past: 'was returning', 
+      english_future: 'will be returning',
+      transitive: false,
+      ok_subjects: 'agent',
+      //objects: 'any',
+      present_tense: {
+        s: [ 'wracam', 'wracasz', 'wraca' ],
+        p: [ 'wracamy', 'wracacie', 'wracają' ]
+      },
+      past_tense: {
+        s: [ 'wracałem/wracałam','wracałeś/wracałaś','wracał/wracała' ],
+        p: [ 'wracaliśmy/wracałyśmy', 'wracaliście/wracałyście', 'wracali/wracały' ]
+      },
+      future_tense: {
+        s: [ 'wracał', 'wracała'  ],
+        p: [ 'wracali', 'wracały' ] 
+      }
+    },
+    { infinitive: ['mieć', 'to have' ],
+      english_past: 'was having', 
+      english_future: 'will be having',
+      transitive: true,
+      ok_subjects: 'agent',
+      objects: 'any',
+      present_tense: {
+        s: [ 'mam', 'masz', 'ma' ],
+        p: [ 'mamy', 'macie', 'mają' ]
+      },
+      past_tense: {
+        s: [ 'miałem/miałam','miałeś/miałaś','miał/miała' ],
+        p: [ 'mieliśmy/miałysmy', 'mieliście/miałyście', 'mieli/miały' ]
+      },
+      future_tense: {
+        s: [ 'miał', 'miała'  ],
+        p: [ 'mieli', 'miały' ] 
+      }
+    },
+    { infinitive: ['widzieć', 'to see' ],
+      english_past: 'was seeing', 
+      english_future: 'will be seeing',
+      transitive: true,
+      ok_subjects: 'agent',
+      objects: 'any',
+      present_tense: {
+        s: [ 'widzę', 'widzisz', 'widzi' ],
+        p: [ 'widzimy', 'widzicie', 'widzą' ]
+      },
+      past_tense: {
+        s: [ 'widziałem/widziałam','widziałeś/widziałaś','widział/widziała' ],
+        p: [ 'widzieliśmy/widziełyśmy', 'widzieliście/widziełyscie', 'widzieli/widziały' ]
+      },
+      future_tense: {
+        s: [ 'widział', 'widziała'  ],
+        p: [ 'widzieli', 'widziały' ] 
+      }
+    },
+    { infinitive: ['słuchać', 'to listen to' ],
+      english_past: 'was listening to', 
+      english_future: 'will be listening to',
+      transitive: true,
+      ok_subjects: 'agent',
+      object_case: 'genitive',
+      objects: [ 'kot', 'samochód', 'rower', 'pociąg', 'samolot', 'zegar', 
+                 'zegarek', 'chłopiec', 'zabawka', 'koń', 'kobieta', 'siostra', 
+                 'żona', 'córka', 'zwierzę', 'ojciec', 'mąż', 'dziadek', 
+                 'niedźwiedź', 'ptak', 'żółw', 'wąż', 'żaba', 'krowa' ],
+      present_tense: {
+        s: [ 'słucham',  'słuchasz', 'słucha' ],
+        p: [ 'słuchamy', 'słuchacie', 'słuchają' ]
+      },
+      past_tense: {
+        s: [ 'słuchałem/słuchałam',     'słuchałeś/słuchałaś',       'słuchał/słuchała' ],
+        p: [ 'słuchaliśmy/słuchałyśmy', 'słuchaliście/słuchałyście', 'słuchali/słuchały' ]
+      },
+      future_tense: {
+        s: [ 'słuchał',  'słuchała'  ],
+        p: [ 'słuchali', 'słuchały' ] 
+      }
     }
 ];
 
+// "exports" is needed for our unit tests in mocha
+// this fakes it up in case we're *not* in mocha
+var exports;
+if (typeof exports === "undefined"){
+    exports = {};
+} 
+verbData.findRow = function(english){
+    var i;
+    for (i = 0; i < this.length; ++i){
+        if (this[i]['infinitive'][1] === english){
+            return this[i];
+        }
+    }
+    throw("Error: no verb match for '" + english + "'");
+};
+exports.verbData = verbData;
 
+
+// "exports" is needed for our unit tests in mocha
+// this fakes it up in case we're *not* in mocha
+var exports;
+if (typeof exports === "undefined"){
+    exports = {};
+} 
 
 /**
  * This is the controller class that drives the page, keeps track of the 
@@ -309,7 +482,13 @@ function Tester(){
     this.currentPerson = null;
     this.currentSubject = null;
     this.currentObject = null;
-}
+    this.subjectIsPronoun = false; // for the current sentence
+    this.isNegated = false;
+};
+
+exports.Tester = Tester;
+
+
 
 Tester.prototype.addNoun = function(noun){
     this.nouns.push(noun);
@@ -347,6 +526,7 @@ Tester.prototype.askQuestion = function(){
 
     this.generateSubjectAdjective();
 
+    this.setNegation();
 
     if (verb.isTransitive){
         var okObjects = verb.okObjects;
@@ -415,6 +595,7 @@ Tester.prototype.generateSubject = function(verb){
         this.currentSubject = pronoun;
         this.subjectNumber = pronoun.number === 's' ? 'singular' : 'plural';
         this.currentPerson = pronoun.person;
+        this.subjectIsPronoun = true;
     }else{ //generateSubjectNumber will revert to 'singular' if nothing is checked
         this.subjectNumber = this.generateSubjectNumber();
         this.currentPerson = 3;
@@ -426,6 +607,7 @@ Tester.prototype.generateSubject = function(verb){
         }
         okSubjects = this.filterActiveSubjects(okSubjects);
         this.currentSubject   = okSubjects[ Math.floor(Math.random()*okSubjects.length) ];
+        this.subjectIsPronoun = false;
     }
 };
 
@@ -450,12 +632,47 @@ Tester.prototype.filterActiveSubjects = function(okSubjects){
 };
 
 Tester.prototype.generateSubjectAdjective = function(){
-    if (this.doUsePronounSubject()){
-        this.subjectAdjective = false;
+    var subjectAdjectivesOk = document.settings["subject-adjectives"].checked;
+
+    if (subjectAdjectivesOk){
+        if (this.subjectIsPronoun){
+            this.subjectAdjective = false;
+        }else{
+            this.subjectAdjective = this.pickAdjectiveForSubject();
+        }
     }else{
-        this.subjectAdjective = this.generateSubjectAdjective();
+        this.subjectAdjective = false;
     }
 };
+
+Tester.prototype.setNegation = function(){
+    if (this.doUseNegation()){
+        this.isNegated = true;
+    }else{
+        this.isNegated = false;
+    }
+}
+
+// if set, make a third of the sentences negations
+Tester.prototype.doUseNegation = function(){
+    var negationSetting = '';
+    var numButtons = document.settings["verbs-negation"].length;
+    var i;
+    for (i = 0; i < numButtons; ++ i){
+        if (document.settings["verbs-negation"][i].checked){
+            negationSetting = document.settings["verbs-negation"][i].value; //sometimes, always, never
+        }
+    }
+    if (negationSetting === "always"){
+        return true;
+    }else if (negationSetting === "never"){
+        return false;
+    }else if (negationSetting === "sometimes"){
+        return Math.floor( Math.random()*(3) +1 ) % 3 === 0 ? true : false;
+    }else{
+        return false;
+    }
+}
 
 Tester.prototype.canUseRegularSubject = function(){
     var singularOk = document.settings["subject-singular"].checked;
@@ -481,13 +698,8 @@ Tester.prototype.generateSubjectNumber = function(){
     }
 };
 
-Tester.prototype.generateSubjectAdjective = function(){
-    var subjectAdjectivesOk = document.settings["subject-adjectives"].checked;
-    if (subjectAdjectivesOk){
-        return this.adjectives[ Math.floor(Math.random()*this.adjectives.length) ];
-    }else{
-        return null;
-    }
+Tester.prototype.pickAdjectiveForSubject = function(){
+    return this.adjectives[ Math.floor(Math.random()*this.adjectives.length) ];
 };
 
 Tester.prototype.generateObjectAdjective = function(){
@@ -562,8 +774,10 @@ Tester.prototype.generateRandomPraise = function(){
     return praises[roll];
 }
 
+// this method is way too long and there's too much stuff repeated
 Tester.prototype.currentPolishSentence = function(args){
-    var wrapInTooltipDivs = args.wrapInTooltipDivs;  //true/false
+    var wrapInTooltipDivs = //true/false
+        ( typeof args === "undefined" ? false : args.wrapInTooltipDivs );  
 
     var subject = this.currentSubject;
     var subjectAdjective = this.subjectAdjective;
@@ -573,7 +787,8 @@ Tester.prototype.currentPolishSentence = function(args){
         number:            null,   // s or p
         person:            this.currentPerson, //1, 2, 3
         gender:            this.currentSubject.getGender(),
-        wrapInTooltipDivs: wrapInTooltipDivs
+        wrapInTooltipDivs: wrapInTooltipDivs,
+        isNegated:         this.isNegated
     };
     var subjectStr, subjectAdjectiveStr, verbStr;
     if (this.subjectNumber === 'singular'){
@@ -635,11 +850,14 @@ Tester.prototype.currentPolishSentence = function(args){
         if (this.objectNumber === 'singular'){
             objectStr = object.makePolishStr({
                 wrapInTooltipDivs: wrapInTooltipDivs,
-                caseAccessor:      "acc_sing"
+                caseAccessor:      
+                    this.isNegated  || this.currentVerb.takesGenitive()
+                    ? "gen_sing" : "acc_sing"
             });
             if (objectAdjective){
                 objectAdjectiveStr =  objectAdjective.makePolishStr({
-                    caseMethodName:    "accusativeSingularForGender", 
+                    caseMethodName:    this.isNegated || this.currentVerb.takesGenitive() 
+                                        ? "genitiveSingularForGender" : "accusativeSingularForGender", 
                     gender:            object.getGender(),
                     isInitialWord:     false,
                     wrapInTooltipDivs: wrapInTooltipDivs
@@ -650,11 +868,13 @@ Tester.prototype.currentPolishSentence = function(args){
         }else{
             objectStr = object.makePolishStr({
                 wrapInTooltipDivs: wrapInTooltipDivs,
-                caseAccessor:      "acc_pl"
+                caseAccessor:      this.isNegated  || this.currentVerb.takesGenitive()
+                                    ? "gen_pl" : "acc_pl"
             });
             if (objectAdjective){
                 objectAdjectiveStr =  objectAdjective.makePolishStr({
-                    caseMethodName:    "accusativePluralForGender", 
+                    caseMethodName:    this.isNegated || this.currentVerb.takesGenitive()
+                                        ? "genitivePluralForGender" : "accusativePluralForGender", 
                     gender:            object.getGender(),
                     isInitialWord:     false,
                     wrapInTooltipDivs: wrapInTooltipDivs
@@ -687,13 +907,21 @@ Tester.prototype.currentPolishVerbStr = function (verbArgs){
             verbStr = verb.getFutureTense(verbArgs);
             break;
     }
-    if (verbArgs.isInitialWord){
+    if (verbArgs.isInitialWord && ! verbArgs.isNegated){
         verbStr = verbStr.charAt(0).toUpperCase() + verbStr.slice(1);
     }
 
     if (verbArgs.wrapInTooltipDivs){
         verbStr = verb.wrapInTooltipDivs(verbStr);
     }
+
+    if (verbArgs.isNegated){
+        verbStr = 'nie ' + verbStr;
+        if (verbArgs.isInitialWord){
+            verbStr = verbStr.charAt(0).toUpperCase() + verbStr.slice(1);
+        }
+    }
+            
     return verbStr;
 };
 
@@ -733,7 +961,14 @@ Tester.prototype.giveHint = function() {
     var i;
     for (i = 0; i < str.length; ++i){
         var rand = Math.floor(Math.random()*showEvery);
+        // do spaces by default
         if (str.charAt(i) === ' ' || str.charAt(i) === '.'){
+            outstr = outstr + str.charAt(i);
+        // and initial letters
+        }else if (i == 0 || i > 0 && str.charAt(i-1) === ' '){
+            outstr = outstr + str.charAt(i);
+        // and final letters (but not the last one of the last word, just to be difficult)
+        }else if ((i < str.length -1) && str.charAt(i+1) === ' '){
             outstr = outstr + str.charAt(i);
         }else{
             outstr = outstr + (rand % showEvery === 1 ? str.charAt(i) : '<span class="graydot">.</span>');
@@ -828,6 +1063,9 @@ Tester.prototype.getEnglishVerb = function(){
         default:
             alert("I don't know this tense: " + this.currentTense);
     }
+    if (this.isNegated){
+        englishVerbStr = englishVerbStr.replace(/^(\S+)\s+/, '$1 not ');
+    }
     return englishVerbStr;
 };
 
@@ -843,7 +1081,7 @@ Tester.prototype.getObjectAdjectiveEnglishStr = function(){
 Tester.prototype.generateGoogleUrl = function() {
     var s = escape(this.currentEnglishSentence());
 
-    return 'http://images.google.com/search?safe=on&tbm=isch&q=' + s;
+    return 'https://images.google.com/search?safe=on&tbm=isch&q=' + s;
 };
 
 Tester.prototype.pushpinPushed = function(pushpinSpanEl){
@@ -885,7 +1123,8 @@ Tester.prototype.unsetPushpin = function(pushpinSpanEl, partOfSentence){
     var pushpinImgEl = pushpinSpanEl.one('img');
 
     pushpinImgEl.set('src', 'push_pin-off.png');
-    // don't hide it right away, too abrupt, pushpinSpanEl.addClass('pushpin-hidden');
+    pushpinSpanEl.addClass('pushpin-off');
+    pushpinSpanEl.removeClass('pushpin-on');
 
     switch (partOfSentence){
         case 'verb':
@@ -902,21 +1141,6 @@ Tester.prototype.unsetPushpin = function(pushpinSpanEl, partOfSentence){
 };
 
 
-Word.prototype.wrapInTooltipDivsTemplate = function (args){
-    var str              = args.polishStr;
-    var wikiLookup       = args.wikiLookup;
-    var tooltipStr       = args.tooltipStr;
-
-    var tooltipTemplate = this.tooltipTemplate;
-
-    var stash = {
-        polishStr: str,
-        wikiLookup: wikiLookup,
-        tooltipStr: tooltipStr
-    }
-
-    return Y.substitute(tooltipTemplate, stash);
-}
 Tester.prototype.checkboxWordListTemplate = '<input id="wordlist-checkbox-{wordId}" type="checkbox" checked="1"/>{english}</input><br/>';
 Tester.prototype.populateCheckboxWordLists = function() {
     var i, row, word, template, stash, html;
@@ -925,6 +1149,10 @@ Tester.prototype.populateCheckboxWordLists = function() {
 
     for (i in verbData){
         row = verbData[i];
+        // to skip the findRow method we added
+        if (typeof row !== 'object'){
+            continue;
+        }
         word = new Verb(row);
         stash = { 
             english: word.infinitive[1],
@@ -940,6 +1168,10 @@ Tester.prototype.populateCheckboxWordLists = function() {
     // the subjects (only agents or i-agents are subjects for verbs)
     for (i in nounData){
         row = nounData[i];
+        // to skip the findRow method we added
+        if (typeof row !== 'object'){
+            continue;
+        }
         word = new Noun(row);
         if (word.agentType === 'no-agent'){
             continue;
@@ -956,16 +1188,35 @@ Tester.prototype.populateCheckboxWordLists = function() {
     }
 };
 
+
+
 /**
  * This is the base class for Noun, Verb, Adjective, and Pronoun.
  * @class Word
  */    
+
+// "exports" is needed for our unit tests in mocha
+// this fakes it up in case we're *not* in mocha
+var exports;
+if (typeof exports === "undefined"){
+    exports = {};
+} 
+
+var Y;
+
+
+
 function Word(){
 
 }
+exports.Word = Word;
 
-// looking for :hover on span instead of a tag means IE6 isn't supported, oh well
-Word.prototype.tooltipTemplate = '<span class="answer-word" >{polishStr}<span class="tooltip"><a href="http://en.wiktionary.org/wiki/{wikiLookup}#Polish" target="_blank">{tooltipStr}</a></span></span> ';
+// for unit tests
+function addYUI(incomingY){
+    Y = incomingY;
+}
+exports.addYUI = addYUI;
+
 
 Word.prototype.wrapInTooltipDivsTemplate = function (args){
     var str              = args.polishStr;
@@ -981,7 +1232,11 @@ Word.prototype.wrapInTooltipDivsTemplate = function (args){
     }
 
     return Y.substitute(tooltipTemplate, stash);
-};
+}
+
+// looking for :hover on span instead of a tag means IE6 isn't supported, oh well
+Word.prototype.tooltipTemplate = '<span class="answer-word" >{polishStr}<span class="tooltip"><a href="https://en.wiktionary.org/wiki/{wikiLookup}#Polish" target="_blank">{tooltipStr}</a></span></span> ';
+
 
 Word.prototype.pushpinTemplate = '<span class="question-word" id="question-word-{partOfSpeech}"><span class="pushpin {hiddenClass} {onOffClass}" id="question-word-{partOfSpeech}-pushpin"><img src="{imgSrc}"/></span>{englishStr}</span>';
 
@@ -995,9 +1250,21 @@ Word.prototype.wrapInPushpinDivs = function(englishStr, partOfSpeech){
         onOffClass: (this.pinned ? 'pushpin-on' : 'pushpin-off')
     };
         
-    return Y.substitute(this.pushpinTemplate, stash);
+    // apparently Y.substitute is deprecated, the docs say:
+    // Use Y.Lang.sub or Y.Template instead.
+    // http://yuilibrary.com/yui/docs/api/classes/YUI~substitute.html
+    //return Y.substitute(this.pushpinTemplate, stash);
+    return Y.Lang.sub(this.pushpinTemplate, stash);
 };
 
+
+
+// "exports" is needed for our unit tests in mocha
+// this fakes it up in case we're *not* in mocha
+var exports;
+if (typeof exports === "undefined"){
+    exports = {};
+} 
 
 /**
  * Can be the subject or the direct object
@@ -1005,18 +1272,23 @@ Word.prototype.wrapInPushpinDivs = function(englishStr, partOfSpeech){
  */
 
 function Noun(args){
-    this.english_sing= args[0];
-    this.english_pl = args[1];
-    this.nom_sing = args[2];
-    this.nom_pl = args[3];
-    this.acc_sing = args[4];
-    this.acc_pl = args[5];
-    this.gender = args[6];
-    this.agentType = args[7];
+    this.english_sing = args[0];
+    this.english_pl   = args[1];
+    this.nom_sing     = args[2];
+    this.nom_pl       = args[3];
+    this.gen_sing     = args[4];
+    this.gen_pl       = args[5];
+    this.acc_sing     = args[6];
+    this.acc_pl       = args[7];
+    this.gender       = args[8];
+    this.agentType    = args[9];
 
     this.wordId = this.nom_sing; // like a primary key for all the words here
 }
-Y.extend(Noun, Word);
+
+exports.Noun = Noun;
+
+//Y.extend(Noun, Word);
 
 Noun.prototype.getGender = function(){
     return this.gender;
@@ -1049,6 +1321,15 @@ Noun.prototype.makePolishStr = function(args){
 };
 
 
+
+
+// "exports" is needed for our unit tests in mocha
+// this fakes it up in case we're *not* in mocha
+var exports;
+if (typeof exports === "undefined"){
+    exports = {};
+} 
+
 /**
  * @class Pronoun
  */
@@ -1061,7 +1342,8 @@ function Pronoun(args){
     this.nom_sing = args[4] || '';
     this.nom_pl = args[4] || '';
 }
-Y.extend(Pronoun, Word);
+exports.Pronoun = Pronoun;
+
 
 Pronoun.prototype.getGender = function(){
     var g = '';
@@ -1115,6 +1397,15 @@ Pronoun.prototype.makePolishStr = function(args){
 
 
 
+
+// "exports" is needed for our unit tests in mocha
+// this fakes it up in case we're *not* in mocha
+var exports;
+if (typeof exports === "undefined"){
+    exports = {};
+} 
+
+
 /**
  * Can be attached to the subject or the direct object, or turned off on either/both of those
  * @class Adjective
@@ -1128,7 +1419,25 @@ function Adjective(args){
 
     this.wordId = this.m; // like a primary key for all the words here
 }
-Y.extend(Adjective, Word);
+//augment would be better than extend anyway
+//http://yuilibrary.com/yui/docs/yui/yui-augment.html
+//Y.extend(Adjective, Word);
+
+
+exports.Adjective = Adjective;
+
+var adjectiveEndings = {
+             //    m-p_+_a  m-inam    f      n
+ // "nominative-s": [    ~y or i~     'a'    'e'
+    "genitive-s":   [ 'ego',  'ego',  'ej', 'ego' ],
+    "dative-s":     [ 'emu',  'emu',  'ej', 'emu' ],
+    "accusative-s": [ 'ego',  '=nom', 'ą',  'e'   ],
+            //      m-pers    m       f    n 
+    "nominative-p": [ 'IRR',   '=nas', '=nas', '=nas'],
+    "genitive-p":   [ '*ch',   '*ch',  '*ch',  '*ch'] ,
+    "dative-p":     [ '*m',    '*m',   '*m',   '*m' ],
+    "accusative-p": [ '=gen',  '=nom', '=nom', '=nom'  ]
+};
 
 Adjective.prototype.adjectiveEndings = adjectiveEndings;
 Adjective.prototype.nominativeSingularForGender = function (gender){
@@ -1164,6 +1473,43 @@ Adjective.prototype.nominativePluralForGender = function (gender){
     }
     return result;
 };
+
+Adjective.prototype.genitiveSingularForGender = function (gender){
+    var stem = this.stem();
+    var masculineEnding = this.masculineEnding(); // "i" or "y"
+    var endings = this.adjectiveEndings['genitive-s'];
+    var result = '';
+    switch(gender) {
+        case 'f': 
+            result = this.addEndingToStemGenitiveSingular(endings[2]);
+            break;
+        case 'n':
+            result = this.addEndingToStemGenitiveSingular(endings[3]);
+            break;
+        case 'm':
+        case 'm-animate':
+        case 'm-personal':
+            result = this.addEndingToStemGenitiveSingular(endings[0]);
+            break;
+        default:
+            alert("Hey, what gender is '" + gender + "' supposed to be?");
+    }
+    return result;
+};
+
+Adjective.prototype.addEndingToStemGenitiveSingular = function (ending){
+    var stem = this.stem(),
+        result;
+    if (stem.charAt(stem.length-1) == 'k' ||
+        stem.charAt(stem.length-1) == 'g'   // I think is right, długiej and drogiej
+       ){
+        result = stem + 'i' + ending;  //e.g. bliskiego
+    }else{
+        result = stem + ending;
+    }
+    return result;
+}
+
 Adjective.prototype.genitivePluralForGender = function (gender) {
     var stem = this.stem();
     var masculineEnding = this.masculineEnding(); // "i" or "y"
@@ -1180,19 +1526,35 @@ Adjective.prototype.genitivePluralForGender = function (gender) {
         default:
             alert("Hey, what gender is '" + gender + "' supposed to be?");
     }
-    return result.replace('*', masculineEnding);
+    // for e.g. tani we don't want to end up with taniich
+    return result.replace(/i?\*/, masculineEnding);
 };
+
 
 Adjective.prototype.stem = function (){
     return this.f.replace(/a$/, '');
 };
+Adjective.prototype.masculineEnding = function(){
+    return this.m.substr( this.m.length -1 );
+};
 Adjective.prototype.accusativeSingularForGender = function (gender){
     var stem = this.stem();
+    // for e.g. niskie ryby, should move this logic into the stem method?
+    //       k and g go to k′ and g′ before endings beginning with y or è: wielk-y:
+    //       wielk′-y/i, spelled wielki; wielk-è: wielk′-e, spelled wielkie
+
+    // F gets its own stem below so this is irrelevant for F
+    if (gender !== 'f' && stem.match(/[kg]$/)){
+        stem = stem + 'i';
+    }
     var masculineEnding = this.masculineEnding(); // "i" or "y"
     var endings = this.adjectiveEndings['accusative-s'];
     var result = '';
     switch(gender) {
         case 'f': 
+            // note we're re-assigning to stem
+            stem = this.nominativeSingularForGender('f');
+            stem = stem.replace(/a$/, '');
             result = stem + endings[2];
             break;
         case 'n':
@@ -1231,10 +1593,6 @@ Adjective.prototype.accusativePluralForGender = function (gender){
     }
     return result;
 };
-Adjective.prototype.masculineEnding = function(){
-    return this.m.substr( this.m.length -1 );
-};
-
 Adjective.prototype.wrapInTooltipDivs = function(str){
     return this.wrapInTooltipDivsTemplate({
         polishStr:      str,
@@ -1249,17 +1607,25 @@ Adjective.prototype.makePolishStr = function(args){
     var isInitialWord      = args.isInitialWord;
     var wrapInTooltipDivs  = args.wrapInTooltipDivs;
 
-    var subjectAdjectiveStr = this[caseMethodName](gender);
+    var adjectiveStr = this[caseMethodName](gender);
 
     if (isInitialWord){
-        subjectAdjectiveStr = subjectAdjectiveStr.charAt(0).toUpperCase() + subjectAdjectiveStr.slice(1);
+        adjectiveStr = adjectiveStr.charAt(0).toUpperCase() + adjectiveStr.slice(1);
     }
     if (wrapInTooltipDivs){
-        subjectAdjectiveStr = this.wrapInTooltipDivs(subjectAdjectiveStr);
+        adjectiveStr = this.wrapInTooltipDivs(adjectiveStr);
     }
-    return subjectAdjectiveStr;
+    return adjectiveStr;
 };
 
+
+
+// "exports" is needed for our unit tests in mocha
+// this fakes it up in case we're *not* in mocha
+var exports;
+if (typeof exports === "undefined"){
+    exports = {};
+} 
 
 /**
  * @class Verb
@@ -1274,12 +1640,20 @@ function Verb(args){
     this.englishPast   = args.english_past;
     this.englishFuture = args.english_future;
     this.futureTense   = args.future_tense;
+    this.objectCase    = args.object_case || 'accusative'; 
 
     this.wordId = args.infinitive[0]; // like a primary key for all the words here
 
     this.pinned        = false;
+
+    // can't we put this into data-verbs?
+    this.byćPast = {
+        s: [ 'będę',     'będziesz',  'będzie' ],
+        p: [ 'będziemy', 'będziecie', 'będą' ]
+    };
 };
-Y.extend(Verb, Word);
+//Y.extend(Verb, Word);
+exports.Verb = Verb;
 
 // This breaks down for pan/pani, since that's 3rd person
 // but should read "you were running" since it's
@@ -1314,7 +1688,8 @@ Verb.prototype.getPastTense = function(verbArgs){
                 break;
             case 'n':
                 // only 3rd pers sing has a neuter
-                verbStr = parts[2]; 
+                verbStr = parts[1]; 
+                verbStr = verbStr.replace(/ła$/, 'ło');
                 break;
             case undefined:
                 // remaining pronouns, also taking the easy way out for now, 
@@ -1352,12 +1727,12 @@ Verb.prototype.getFutureTense = function(verbArgs){
                 break;
             case 'n':
                 str = this.futureTense['s'][1];
-                str = str.replace('ła$', 'ło');
+                str = str.replace(/ła$/, 'ło');
                 break;
             default:
                 alert("I don't know gender '" + verbArgs.gender + "'");
         }
-        str = byćPast['s'][verbArgs.person-1] + ' ' + str;
+        str = this.byćPast['s'][verbArgs.person-1] + ' ' + str;
     }else{
         switch(verbArgs.gender){
             case 'm-personal':
@@ -1367,7 +1742,7 @@ Verb.prototype.getFutureTense = function(verbArgs){
             default:
                 str = this.futureTense['p'][1];
         }
-        str = byćPast['p'][verbArgs.person-1] + ' ' + str;
+        str = this.byćPast['p'][verbArgs.person-1] + ' ' + str;
     }
 
     return str;
@@ -1381,30 +1756,59 @@ Verb.prototype.wrapInTooltipDivs = function(str){
         tooltipStr: this.infinitive[0] + ', ' + this.presentTense.s[0] + ', ' + this.presentTense.s[1]
     });
 };
+
+Verb.prototype.takesGenitive = function() {
+    return this.objectCase === 'genitive' ? true : false;
+};
     
+
+// See notes in 01-basic.js for why we have to do this here
+// and not in the modules.
+// Possibly change this to use 'augment' instead of 'extend'?
+Y.augment(Adjective, Word);
+Y.augment(Noun, Word);
+Y.augment(Verb, Word);
+Y.augment(Pronoun, Word);
+
 
 // this stuff should be in its own function so we can scope the variables
 var tester = new Tester();
 var i, row, noun, pronoun, adjective, verb;
 for (i in nounData){
     row = nounData[i];
+    // to skip the findRow method we added
+    if (typeof row !== 'object'){
+        continue;
+    }
     noun = new Noun(row);
     tester.addNoun(noun);
 }
 for (i in pronounData){
     row = pronounData[i];
+    // to skip the findRow method we added
+    if (typeof row !== 'object'){
+        continue;
+    }
     pronoun = new Pronoun(row);
     tester.pronouns.push(pronoun);
 }
 
 for (i in adjectiveData){
     row = adjectiveData[i];
+    // to skip the findRow method we added
+    if (typeof row !== 'object'){
+        continue;
+    }
     adjective = new Adjective(row);
     tester.adjectives.push(adjective);
 }
 
 for (i in verbData){
     row = verbData[i];
+    // to skip the findRow method we added
+    if (typeof row !== 'object'){
+        continue;
+    }
     verb = new Verb(row);
     tester.addVerb(verb);
 }
@@ -1419,7 +1823,6 @@ var returnPressed = 'down:13';
 Y.on('key', function(e) {
     tester.checkAnswer();
 }, '#input', returnPressed, Y);
-
 Y.on('click', function(e){
     tester.giveHint();
    }, '#give-hint', Y
@@ -1428,6 +1831,10 @@ Y.on('click', function(e){
     tester.askQuestion();
     }, '#go-again', Y
 );
+Y.one('doc').on('key', function (e){
+    tester.askQuestion();
+   }, 'down:78+ctrl', Y
+); 
 Y.on('click', function(e){
     tester.showAnswer();
     }, '#show-answer', Y
@@ -1476,6 +1883,7 @@ body {
 
 .graydot {
     color: lightgrey;
+    padding: 4px;
 }
 
 .instructions {
@@ -1496,6 +1904,9 @@ body {
 .input label {
     margin: 0px;
     padding: 0px;
+}
+.input label.radiobuttons {
+    font-size: 75%;
 }
 input {
     font-size: 75%;
@@ -1583,6 +1994,20 @@ radio {
     color: grey;
 }
 
+.footer {
+    color: grey;
+    padding: 40px;
+    margin: 10px;
+    font-style: italic;
+}
+
+#last-updated {
+    float: left;
+}
+#original-source {
+    float: right;
+}
+
 
 </style>
 </head>
@@ -1644,7 +2069,7 @@ radio {
                     <label><input type="checkbox" name="subject-pronouns" checked="1"/>Include pronoun subjects</label>
                 </div>
                 <div class="input">
-                    <label><input type="checkbox" name="subject-adjectives" checked="1"/>Attach adjectives to subjects</label>
+                    <label><input type="checkbox" name="subject-adjectives"/>Attach adjectives to subjects</label>
                 </div>
             </fieldset>
             <fieldset>
@@ -1653,7 +2078,7 @@ radio {
                 <div class="input">
                     <label><input type="checkbox" name="object-adjectives" checked="1">Attach adjectives to the direct object</label>
                 </div>
-            <!-- could add "include verbs whose d/o takes the genitive (e.g. chcieć) -->
+            <!-- could add "include verbs whose d/o takes the genitive (e.g. potrzebować, (chcieć?) ) -->
             </fieldset>
             <fieldset class="buttony-legend">
                 <legend>
@@ -1671,11 +2096,25 @@ radio {
                 <div class="input">
                     <label><input type="checkbox" name="verbs-future" checked="1"/>Include future tense</label>
                 </div>
+                <div class="input">
+                    Include negations:<br>
+                    <label class="radiobuttons"><input type="radio" name="verbs-negation" value="sometimes" checked="1"/>sometimes</label>
+                    <label class="radiobuttons"><input type="radio" name="verbs-negation" value="always"/>always</label>
+                    <label class="radiobuttons"><input type="radio" name="verbs-negation" value="never"/>never</label>
+                </div>
             </fieldset>
         </form>
 	</div>
 </div>
 
+<div class="footer">
+    <span id="last-updated">
+    Last Updated: 2014-03-15
+    </span>
+    <span id="original-source">
+        Source Code: <a href="https://github.com/kgoess/Polish-Grammar-Drill">https://github.com/kgoess/Polish-Grammar-Drill</a>
+    </span>
+</div>
 
 </body>
 </html>

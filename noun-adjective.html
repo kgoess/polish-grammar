@@ -4,9 +4,28 @@
 <head>
 <META http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
+<!--
+Copyright (c) 2011 Kevin M. Goess
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+-->
+
+
 <title>polish plurals</title>
 
-<script type="text/javascript" src="http://yui.yahooapis.com/3.3.0/build/yui/yui-min.js"></script>
+<!-- <script type="text/javascript" src="https://yui.yahooapis.com/3.3.0/build/yui/yui-min.js"></script> -->
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/yui/3.3.0/yui/yui-min.js"></script>
 
 <script type="text/javascript">
 YUI().use('node', 'event-key', function(Y) {
@@ -114,7 +133,7 @@ Tester.prototype.currentEnglishSentence = function(){
 Tester.prototype.generateGoogleUrl = function() {
     var s = escape(this.currentEnglishSentence());
 
-    return 'http://images.google.com/search?safe=on&tbm=isch&q=' + s;
+    return 'https://images.google.com/search?safe=on&tbm=isch&q=' + s;
 }
     
 
@@ -137,7 +156,7 @@ function Adjective(args){
 var nounData = [
  [ 'house', 'houses', 'dom', 'domy', 'm' ], 
  [ 'cat', 'cats', 'kot', 'koty', 'm' ], 
- [ 'table', 'tables', 'stół', 'stóły', 'm' ], 
+ [ 'table', 'tables', 'stół', 'stoły', 'm' ], 
  [ 'store', 'stores', 'sklep', 'sklepy', 'm' ], 
  [ 'church', 'churches', 'koscioł', 'koscioły', 'm' ], 
  [ 'car', 'cars', 'samochód', 'samochody', 'm' ], 
@@ -159,7 +178,7 @@ var nounData = [
  [ 'hat', 'hats', 'kapelusz', 'kapelusze', 'm' ], 
  [ 'horse', 'horses', 'koń', 'konie', 'm' ], 
  [ 'woman', 'women', 'kobieta', 'kobiety', 'f' ], 
- [ 'school', 'schools', 'skoła', 'skoły', 'f' ], 
+ [ 'school', 'schools', 'szkoła', 'szkoły', 'f' ], 
  [ 'sister', 'sisters', 'siostra', 'siostry', 'f' ], 
  [ 'wife', 'wives', 'żona', 'żony', 'f' ], 
  [ 'cloud', 'clouds', 'chmura', 'chmury', 'f' ], 
